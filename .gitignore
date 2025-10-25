@@ -1,0 +1,48 @@
+# Unity
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Mm]emoryCaptures/
+[Uu]serSettings/
+SysInfo.txt
+
+# Newer Unity caches
+Artifacts/
+DerivedData/
+*.ide/
+.vs/
+*.csproj
+*.sln
+*.user
+*.unityproj
+*.pidb
+*.booproj
+
+# Crash & profiler
+*.stacktrace
+*.dmp
+*.etl
+
+# IDEs
+.idea/
+.vscode/
+
+# Gradle/Android
+.gradle/
+**/gradleOut/
+*.apk
+*.aab
+
+# Rider/VS cache
+/.vs/
+/*.DotSettings.user
+
+# Unity 6 Build Profiles local data
+BuildProfileConfig.json
+
+# OS
+.DS_Store
+Thumbs.db
