@@ -16,7 +16,7 @@ public class OverlayToggle : MonoBehaviour
     {
         toggle = new InputAction(type: InputActionType.Button,
                                  binding: "<XRController>{LeftHand}/primaryButton");
-        toggle.AddBinding("<XRController>{RightHand}/primaryButton");
+        //toggle.AddBinding("<XRController>{RightHand}/primaryButton");
 
         if (!overlayCanvas && overlayRoot)
             overlayCanvas = overlayRoot.GetComponentInChildren<Canvas>(true);
