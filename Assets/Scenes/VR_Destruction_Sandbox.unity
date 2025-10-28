@@ -226,7 +226,7 @@ Transform:
   m_GameObject: {fileID: 13690094}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0, y: -0.503, z: -0}
+  m_LocalPosition: {x: -0, y: -0.5, z: -0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -857,6 +857,7 @@ GameObject:
   m_Component:
   - component: {fileID: 806533658}
   - component: {fileID: 806533657}
+  - component: {fileID: 806533659}
   m_Layer: 0
   m_Name: BenchRoot
   m_TagString: Untagged
@@ -876,12 +877,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6e15ea92b5184ce449005e2caa7015d2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BenchManager
-  mode: 2
-  rigidCount: 150
+  mode: 0
+  rigidCount: 300
   fracturedCount: 8
-  cosmeticCount: 2000
-  spawnMin: {x: -3, y: 0.8, z: -3}
-  spawnMax: {x: 3, y: 2, z: 3}
+  cosmeticCount: 20000
+  spawnMin: {x: -10, y: -0.5, z: -10}
+  spawnMax: {x: 10, y: 10, z: 10}
   pooledRigidPrefab: {fileID: 7895485699109615954, guid: ff1484790958206479012a740ad44a85, type: 3}
   fracturedPrefab: {fileID: 2592060388196611739, guid: 7f5eb5e8679a8e140b190247f4ab2317, type: 3}
   cosmeticMesh: {fileID: -5495902117074765545, guid: 13157ebf5800ccb4db88f6a7d423c507, type: 3}
@@ -904,6 +905,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &806533659
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 806533656}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e6257eb815483e240be66d7da5421483, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ModeCycler
 --- !u!1 &820237815
 GameObject:
   m_ObjectHideFlags: 0
