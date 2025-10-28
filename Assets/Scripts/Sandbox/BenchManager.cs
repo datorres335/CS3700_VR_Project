@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 /// Three modes for your sandbox bench.
 public enum BenchMode { RigidOnly, Fractured, Cosmetic }
@@ -11,19 +12,21 @@ public class DebrisRenderer : MonoBehaviour
     public Material material;
     public List<Matrix4x4> matrices = new();
 
-    // 1023 is the per-draw instancing limit
-    static readonly Matrix4x4[] _batch = new Matrix4x4[1023];
+    static readonly Matrix4x4[] BATCH = new Matrix4x4[1023];
 
-    void OnRenderObject()
+    void LateUpdate()
     {
         if (!mesh || !material || matrices.Count == 0) return;
+        if (!material.enableInstancing) return;
 
         int offset = 0;
         while (offset < matrices.Count)
         {
             int count = Mathf.Min(1023, matrices.Count - offset);
-            matrices.CopyTo(offset, _batch, 0, count);
-            Graphics.DrawMeshInstanced(mesh, 0, material, _batch, count);
+            matrices.CopyTo(offset, BATCH, 0, count);
+            Graphics.DrawMeshInstanced(mesh, 0, material, BATCH, count,
+                null, ShadowCastingMode.Off, false, 0, null,
+                LightProbeUsage.Off, null);
             offset += count;
         }
     }

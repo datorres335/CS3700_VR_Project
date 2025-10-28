@@ -876,7 +876,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6e15ea92b5184ce449005e2caa7015d2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BenchManager
-  mode: 2
+  mode: 0
   rigidCount: 150
   fracturedCount: 8
   cosmeticCount: 2000
