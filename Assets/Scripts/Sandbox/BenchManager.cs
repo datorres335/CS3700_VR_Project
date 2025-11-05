@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -89,6 +89,12 @@ public class BenchManager : MonoBehaviour
     public Mesh cosmeticMesh;              // e.g., DebrisMesh.fbx mesh (or a primitive mesh)
     public Material cosmeticMaterial;      // DebrisMat (Enable GPU Instancing ?)
 
+    [Header("Cosmetic mode selection")]
+    public bool useParallelCosmetic = true;          // toggle in Inspector
+    public CosmeticJobsController jobsController;    // drag the CosmeticJobs here
+    public float cosmeticBaseScale = 1f;             // pass-through to jobs
+    public Vector2 cosmeticRandomScale = new(0.8f, 1.2f);
+
     [Header("Parents (optional)")]
     public Transform rigidParent;
     public Transform fracturedParent;
@@ -120,6 +126,10 @@ public class BenchManager : MonoBehaviour
         debrisRenderer = drawer.AddComponent<DebrisRenderer>();
         debrisRenderer.mesh = cosmeticMesh;
         debrisRenderer.material = cosmeticMaterial;
+        debrisRenderer.gameObject.SetActive(!useParallelCosmetic);
+
+        // if a jobs controller is assigned, start it disabled (we’ll enable only in Cosmetic)
+        if (jobsController != null) jobsController.enabled = false;
     }
 
     void Start() => RunMode(mode);
@@ -128,13 +138,55 @@ public class BenchManager : MonoBehaviour
     public void RunMode(BenchMode newMode)
     {
         mode = newMode;
+
+        // Turn off both cosmetic paths first (avoid double rendering)
+        if (debrisRenderer) debrisRenderer.gameObject.SetActive(false);
+        if (jobsController) jobsController.enabled = false;
+
         ClearAll();
 
         switch (mode)
         {
-            case BenchMode.RigidOnly: SpawnRigidOnly(); break;
-            case BenchMode.Fractured: SpawnFractured(); break;
-            case BenchMode.Cosmetic: SpawnCosmetic(); break;
+            case BenchMode.RigidOnly:
+                SpawnRigidOnly();
+                break;
+
+            case BenchMode.Fractured:
+                SpawnFractured();
+                break;
+
+            case BenchMode.Cosmetic:
+                if (useParallelCosmetic && jobsController != null)
+                {
+                    // Configure + enable the parallel jobs controller
+                    jobsController.count = Mathf.Max(0, cosmeticCount);
+                    jobsController.spawnMin = spawnMin;
+                    jobsController.spawnMax = spawnMax;
+                    jobsController.baseScale = cosmeticBaseScale;
+                    jobsController.randomScale = cosmeticRandomScale;
+
+                    // make sure it uses the same mesh/material you assigned to BenchManager
+                    if (cosmeticMesh) jobsController.mesh = cosmeticMesh;
+                    if (cosmeticMaterial) jobsController.material = cosmeticMaterial;
+
+                    jobsController.enabled = true;     // it will (re)initialize in Start/OnEnable
+                    
+                    // 👉 force it to rebuild arrays with the new settings
+                    jobsController.ReinitializeNow();
+                }
+                else
+                {
+                    // Use the original static cosmetic path
+                    if (debrisRenderer)
+                    {
+                        debrisRenderer.mesh = cosmeticMesh;
+                        debrisRenderer.material = cosmeticMaterial;
+                        debrisRenderer.matrices.Clear();
+                        SpawnCosmetic();  // your existing static fill
+                        debrisRenderer.gameObject.SetActive(true);
+                    }
+                }
+                break;
         }
     }
 

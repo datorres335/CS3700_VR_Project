@@ -880,13 +880,17 @@ MonoBehaviour:
   mode: 0
   rigidCount: 300
   fracturedCount: 8
-  cosmeticCount: 20000
+  cosmeticCount: 2000
   spawnMin: {x: -10, y: -0.5, z: -10}
   spawnMax: {x: 10, y: 10, z: 10}
   pooledRigidPrefab: {fileID: 7895485699109615954, guid: ff1484790958206479012a740ad44a85, type: 3}
   fracturedPrefab: {fileID: 2592060388196611739, guid: 7f5eb5e8679a8e140b190247f4ab2317, type: 3}
   cosmeticMesh: {fileID: -5495902117074765545, guid: 13157ebf5800ccb4db88f6a7d423c507, type: 3}
   cosmeticMaterial: {fileID: 2100000, guid: ac7556f0081007e4284b4c963d43d53c, type: 2}
+  useParallelCosmetic: 1
+  jobsController: {fileID: 861550546}
+  cosmeticBaseScale: 1
+  cosmeticRandomScale: {x: 0.8, y: 1.2}
   rigidParent: {fileID: 0}
   fracturedParent: {fileID: 0}
   cosmeticParent: {fileID: 0}
@@ -902,7 +906,8 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 861550547}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &806533659
@@ -1091,6 +1096,60 @@ Transform:
   - {fileID: 361976009}
   - {fileID: 1524532123}
   m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &861550545
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 861550547}
+  - component: {fileID: 861550546}
+  m_Layer: 0
+  m_Name: CosmeticJobs
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &861550546
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 861550545}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 54fdd27141526404bb3148ebac895085, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CosmeticJobsController
+  mesh: {fileID: -5495902117074765545, guid: 13157ebf5800ccb4db88f6a7d423c507, type: 3}
+  material: {fileID: 2100000, guid: ac7556f0081007e4284b4c963d43d53c, type: 2}
+  count: 2000
+  spawnMin: {x: -3, y: 1, z: -3}
+  spawnMax: {x: 3, y: 2, z: 3}
+  initialSpeed: 0.5
+  damping: 0.5
+  baseScale: 1
+  randomScale: {x: 0.8, y: 1.2}
+  rngSeed: 123
+--- !u!4 &861550547
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 861550545}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0.4995, y: -0.5, z: 1.296}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 806533658}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &890792834
 GameObject:

@@ -199,4 +199,12 @@ public class CosmeticJobsController : MonoBehaviour
         if (vel.IsCreated) vel.Dispose();
         if (matrices.IsCreated) matrices.Dispose();
     }
+
+    public void ReinitializeNow()
+    {
+        DisposeIfAllocated();  // free old NativeArrays if any
+        Allocate();            // allocate using the current 'count'
+        InitializeParticles(); // fill positions/velocities/matrices
+    }
+
 }
