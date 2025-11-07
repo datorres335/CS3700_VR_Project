@@ -143,6 +143,8 @@ public class BenchManager : MonoBehaviour
         if (debrisRenderer) debrisRenderer.gameObject.SetActive(false);
         if (jobsController) jobsController.enabled = false;
 
+        CosmeticJobsController.ClearStats();
+
         ClearAll();
 
         switch (mode)

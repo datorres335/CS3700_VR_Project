@@ -12,6 +12,7 @@ public class CosmeticJobsController : MonoBehaviour
     public static float LastJobMs { get; private set; }
     public static int LastJobCount { get; private set; }
     public static int WorkerCount => Unity.Jobs.LowLevel.Unsafe.JobsUtility.JobWorkerCount;
+    public static int LastUpdateFrame { get; private set; } = -1;
 
     [Header("Rendering (assign these)")]
     public Mesh mesh;
@@ -40,6 +41,13 @@ public class CosmeticJobsController : MonoBehaviour
     Matrix4x4[] batch = new Matrix4x4[1023];
 
     bool initialized;
+
+    public static void ClearStats()
+    {
+        LastJobMs = 0f;
+        LastJobCount = 0;
+        LastUpdateFrame = -1;
+    }
 
     // -------------------- JOBS --------------------
 
@@ -169,8 +177,9 @@ public class CosmeticJobsController : MonoBehaviour
         float jobMs = (float)t0.Elapsed.TotalMilliseconds;
         LastJobMs = jobMs;
         LastJobCount = count;
+        LastUpdateFrame = Time.frameCount;
 
-        Debug.Log($"[CosmeticJobsController] Job: {jobMs:F3} ms  |  count={count}  |  frame={(Time.deltaTime * 1000f):F3} ms  |  workers={Unity.Jobs.LowLevel.Unsafe.JobsUtility.JobWorkerCount}");
+        if (Time.frameCount % 60 == 0) Debug.Log($"[CosmeticJobsController] Job: {jobMs:F3} ms  |  count={count}  |  frame={(Time.deltaTime * 1000f):F3} ms  |  workers={Unity.Jobs.LowLevel.Unsafe.JobsUtility.JobWorkerCount}");
 
         // Draw (main thread)
         DrawBatched();
@@ -204,6 +213,11 @@ public class CosmeticJobsController : MonoBehaviour
         u.m02 = m.c2.x; u.m12 = m.c2.y; u.m22 = m.c2.z; u.m32 = m.c2.w;
         u.m03 = m.c3.x; u.m13 = m.c3.y; u.m23 = m.c3.z; u.m33 = m.c3.w;
         return u;
+    }
+
+    void OnDisable()
+    {
+        ClearStats();
     }
 
     void OnDestroy() => DisposeIfAllocated();
