@@ -42,6 +42,17 @@ public class StatsOverlay : MonoBehaviour
         sb.AppendFormat("Rigidbodies: {0}\n", rbCount);
         sb.AppendLine("Debris (cosmetic): 0  (Phase 2+)");
         sb.AppendFormat("Draw Calls (approx): {0}\n", UnityStats.drawCalls);
+
+        // append job system stats (if available)
+        if (CosmeticJobsController.LastJobCount > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("<b>Parallel Jobs</b>");
+            sb.AppendFormat("Job Time: {0:0.000} ms\n", CosmeticJobsController.LastJobMs);
+            sb.AppendFormat("Job Count: {0}\n", CosmeticJobsController.LastJobCount);
+            sb.AppendFormat("Worker Threads: {0}\n", CosmeticJobsController.WorkerCount);
+        }
+
         statsText.text = sb.ToString();
 
         // reset the window every N samples

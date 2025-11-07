@@ -9,6 +9,10 @@ using Rng = Unity.Mathematics.Random;
 
 public class CosmeticJobsController : MonoBehaviour
 {
+    public static float LastJobMs { get; private set; }
+    public static int LastJobCount { get; private set; }
+    public static int WorkerCount => Unity.Jobs.LowLevel.Unsafe.JobsUtility.JobWorkerCount;
+
     [Header("Rendering (assign these)")]
     public Mesh mesh;
     public Material material; // URP Simple Lit/Unlit, Enable GPU Instancing ✅
@@ -145,6 +149,9 @@ public class CosmeticJobsController : MonoBehaviour
     {
         if (!initialized) return;
 
+        // ---- start timing the Burst job ----
+        var t0 = System.Diagnostics.Stopwatch.StartNew();
+
         // Parallel integrate
         var integrate = new IntegrateJob
         {
@@ -156,6 +163,14 @@ public class CosmeticJobsController : MonoBehaviour
         };
         var handle = integrate.Schedule(count, 128);
         handle.Complete();
+
+        t0.Stop();
+
+        float jobMs = (float)t0.Elapsed.TotalMilliseconds;
+        LastJobMs = jobMs;
+        LastJobCount = count;
+
+        Debug.Log($"[CosmeticJobsController] Job: {jobMs:F3} ms  |  count={count}  |  frame={(Time.deltaTime * 1000f):F3} ms  |  workers={Unity.Jobs.LowLevel.Unsafe.JobsUtility.JobWorkerCount}");
 
         // Draw (main thread)
         DrawBatched();
