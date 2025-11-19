@@ -7,6 +7,8 @@ using UnityEngine;
 /// </summary>
 public class CosmeticJobsController : MonoBehaviour
 {
+    public enum ColliderType { Box, Sphere, Mesh }
+
     public static float LastJobMs { get; private set; }
     public static int LastJobCount { get; private set; }
     public static int WorkerCount => SystemInfo.processorCount;
@@ -30,7 +32,8 @@ public class CosmeticJobsController : MonoBehaviour
     public float angularDrag = 0.5f;
 
     [Header("Collision")]
-    public float colliderRadius = 0.05f;
+    [Tooltip("Box: Best for brick/cube shapes. Mesh: Exact fit but more expensive.")]
+    public ColliderType colliderType = ColliderType.Box;
     public PhysicsMaterial physicsMaterial;
 
     [Header("Seed")]
@@ -102,10 +105,36 @@ public class CosmeticJobsController : MonoBehaviour
             meshRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             meshRenderer.receiveShadows = false;
 
-            // Add collider
-            SphereCollider collider = obj.AddComponent<SphereCollider>();
-            collider.radius = colliderRadius / scale; // Adjust for object scale
-            if (physicsMaterial != null)
+            // Add collider based on selected type
+            Collider collider = null;
+            switch (colliderType)
+            {
+                case ColliderType.Box:
+                    // BoxCollider automatically sizes to mesh bounds
+                    var boxCol = obj.AddComponent<BoxCollider>();
+                    boxCol.center = mesh.bounds.center;
+                    boxCol.size = mesh.bounds.size;
+                    collider = boxCol;
+                    break;
+
+                case ColliderType.Sphere:
+                    // SphereCollider uses mesh bounds to determine radius
+                    var sphereCol = obj.AddComponent<SphereCollider>();
+                    sphereCol.center = mesh.bounds.center;
+                    sphereCol.radius = mesh.bounds.extents.magnitude * 0.5f;
+                    collider = sphereCol;
+                    break;
+
+                case ColliderType.Mesh:
+                    // MeshCollider for exact collision (must be convex for rigidbody)
+                    var meshCol = obj.AddComponent<MeshCollider>();
+                    meshCol.sharedMesh = mesh;
+                    meshCol.convex = true; // Required for rigidbody interaction
+                    collider = meshCol;
+                    break;
+            }
+
+            if (collider != null && physicsMaterial != null)
                 collider.material = physicsMaterial;
 
             // Add rigidbody with zero gravity

@@ -1795,16 +1795,16 @@ MonoBehaviour:
   mode: 0
   rigidCount: 300
   fracturedCount: 8
-  cosmeticCount: 2000
-  spawnMin: {x: -10, y: -0.5, z: -10}
-  spawnMax: {x: 10, y: 10, z: 10}
+  cosmeticCount: 3000
+  spawnMin: {x: -6, y: -0.5, z: -6}
+  spawnMax: {x: 6, y: 6, z: 6}
   pooledRigidPrefab: {fileID: 7895485699109615954, guid: ff1484790958206479012a740ad44a85, type: 3}
   fracturedPrefab: {fileID: 2592060388196611739, guid: 7f5eb5e8679a8e140b190247f4ab2317, type: 3}
   cosmeticMesh: {fileID: -5495902117074765545, guid: 13157ebf5800ccb4db88f6a7d423c507, type: 3}
   cosmeticMaterial: {fileID: 2100000, guid: ac7556f0081007e4284b4c963d43d53c, type: 2}
   useParallelCosmetic: 1
   jobsController: {fileID: 861550546}
-  cosmeticBaseScale: 1
+  cosmeticBaseScale: 2
   cosmeticRandomScale: {x: 0.8, y: 1.2}
   rigidParent: {fileID: 0}
   fracturedParent: {fileID: 0}
@@ -2046,10 +2046,13 @@ MonoBehaviour:
   count: 2000
   spawnMin: {x: -3, y: 1, z: -3}
   spawnMax: {x: 3, y: 2, z: 3}
-  initialSpeed: 0.5
-  damping: 0.5
-  baseScale: 1
+  baseScale: 2
   randomScale: {x: 0.8, y: 1.2}
+  mass: 1
+  drag: 0.1
+  angularDrag: 0.5
+  colliderType: 0
+  physicsMaterial: {fileID: 13400000, guid: d1beca417a097264dad2d1b3bf11e7bf, type: 2}
   rngSeed: 123
 --- !u!4 &861550547
 Transform:
