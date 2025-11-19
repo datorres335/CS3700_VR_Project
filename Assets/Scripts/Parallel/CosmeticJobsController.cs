@@ -1,45 +1,43 @@
-﻿using System;
-using Unity.Burst;
-using Unity.Collections;
-using Unity.Jobs;
-using Unity.Mathematics;
+﻿using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Rendering;
-using Rng = Unity.Mathematics.Random;
 
+/// <summary>
+/// Spawns grabbable rigidbodies in zero gravity.
+/// Objects start stationary and only move when colliding or grabbed/thrown.
+/// </summary>
 public class CosmeticJobsController : MonoBehaviour
 {
     public static float LastJobMs { get; private set; }
     public static int LastJobCount { get; private set; }
-    public static int WorkerCount => Unity.Jobs.LowLevel.Unsafe.JobsUtility.JobWorkerCount;
+    public static int WorkerCount => SystemInfo.processorCount;
     public static int LastUpdateFrame { get; private set; } = -1;
 
     [Header("Rendering (assign these)")]
     public Mesh mesh;
-    public Material material; // URP Simple Lit/Unlit, Enable GPU Instancing ✅
+    public Material material;
 
     [Header("Counts & Area")]
-    public int count = 2000;
+    [Tooltip("Recommended: 50-200 for VR performance with physics")]
+    public int count = 100;
     public Vector3 spawnMin = new(-3f, 1f, -3f);
     public Vector3 spawnMax = new(3f, 2f, 3f);
 
-    [Header("Motion")]
-    public float initialSpeed = 0.5f;   // random speed magnitude
-    public float damping = 0.5f;        // per-second exponential damping
-    public float baseScale = 1.0f;      // global size
+    [Header("Object Properties")]
+    public float baseScale = 0.1f;
     public Vector2 randomScale = new(0.8f, 1.2f);
+    public float mass = 1f;
+    public float drag = 0.1f;
+    public float angularDrag = 0.5f;
+
+    [Header("Collision")]
+    public float colliderRadius = 0.05f;
+    public PhysicsMaterial physicsMaterial;
 
     [Header("Seed")]
     public uint rngSeed = 123u;
 
-    // Native buffers
-    NativeArray<float3> pos;
-    NativeArray<float3> vel;
-    NativeArray<float4x4> matrices;
-
-    // temp batch buffer for DrawMeshInstanced
-    Matrix4x4[] batch = new Matrix4x4[1023];
-
+    // Spawned objects
+    List<GameObject> spawnedObjects = new List<GameObject>();
     bool initialized;
 
     public static void ClearStats()
@@ -49,170 +47,134 @@ public class CosmeticJobsController : MonoBehaviour
         LastUpdateFrame = -1;
     }
 
-    // -------------------- JOBS --------------------
-
-    [BurstCompile]
-    struct InitJob : IJobParallelFor
-    {
-        public float3 min, max;
-        public float speedMag;
-        public float baseScale;
-        public float2 randScaleMinMax;
-        public float uniformYRotation; // set 1 to keep upright else random yaw only
-        public Rng rngBase;
-
-        public NativeArray<float3> pos;
-        public NativeArray<float3> vel;
-        public NativeArray<float4x4> outMatrices;
-
-        public void Execute(int i)
-        {
-            var rng = new Rng(rngBase.state + (uint)i);
-
-            float3 p = math.lerp(min, max, rng.NextFloat3());
-            float3 dir = math.normalize(rng.NextFloat3Direction());
-            float spd = speedMag * rng.NextFloat(0.5f, 1.5f);
-            float3 v = dir * spd;
-
-            float s = baseScale * rng.NextFloat(randScaleMinMax.x, randScaleMinMax.y);
-
-            quaternion r;
-            if (uniformYRotation > 0.5f)
-                r = quaternion.EulerXYZ(0, rng.NextFloat(0f, math.PI * 2f), 0);
-            else
-                r = quaternion.identity;
-
-            pos[i] = p;
-            vel[i] = v;
-            outMatrices[i] = float4x4.TRS(p, r, new float3(s, s, s));
-        }
-    }
-
-    [BurstCompile]
-    struct IntegrateJob : IJobParallelFor
-    {
-        public float dt;
-        public float damping; // per-second
-        public NativeArray<float3> pos;
-        public NativeArray<float3> vel;
-        public NativeArray<float4x4> outMatrices;
-
-        public void Execute(int i)
-        {
-            float3 v = vel[i] * math.exp(-damping * dt);
-            float3 p = pos[i] + v * dt;
-
-            vel[i] = v;
-            pos[i] = p;
-
-            outMatrices[i] = float4x4.TRS(p, quaternion.identity, 1f);
-        }
-    }
-
-    // -------------------- LIFECYCLE --------------------
-
     void Start()
     {
         if (!mesh || !material)
         {
             Debug.LogWarning("Assign mesh & material to CosmeticJobsController.");
-            enabled = false; return;
+            enabled = false;
+            return;
         }
 
-        Allocate();
-        InitializeParticles();
+        SpawnObjects();
         initialized = true;
     }
 
-    void Allocate()
+    void SpawnObjects()
     {
-        DisposeIfAllocated();
+        ClearObjects();
 
-        pos = new NativeArray<float3>(count, Allocator.Persistent);
-        vel = new NativeArray<float3>(count, Allocator.Persistent);
-        matrices = new NativeArray<float4x4>(count, Allocator.Persistent);
+        var rng = new System.Random((int)(rngSeed == 0 ? 1 : rngSeed));
+        var t0 = System.Diagnostics.Stopwatch.StartNew();
+
+        for (int i = 0; i < count; i++)
+        {
+            // Random position within spawn bounds
+            Vector3 position = new Vector3(
+                Mathf.Lerp(spawnMin.x, spawnMax.x, (float)rng.NextDouble()),
+                Mathf.Lerp(spawnMin.y, spawnMax.y, (float)rng.NextDouble()),
+                Mathf.Lerp(spawnMin.z, spawnMax.z, (float)rng.NextDouble())
+            );
+
+            // Random scale
+            float scale = baseScale * Mathf.Lerp(randomScale.x, randomScale.y, (float)rng.NextDouble());
+
+            // Random rotation
+            Quaternion rotation = Quaternion.Euler(
+                (float)rng.NextDouble() * 360f,
+                (float)rng.NextDouble() * 360f,
+                (float)rng.NextDouble() * 360f
+            );
+
+            // Create GameObject
+            GameObject obj = new GameObject($"GrabbableObject_{i}");
+            obj.transform.parent = transform;
+            obj.transform.position = position;
+            obj.transform.rotation = rotation;
+            obj.transform.localScale = Vector3.one * scale;
+
+            // Add mesh rendering
+            MeshFilter meshFilter = obj.AddComponent<MeshFilter>();
+            meshFilter.mesh = mesh;
+
+            MeshRenderer meshRenderer = obj.AddComponent<MeshRenderer>();
+            meshRenderer.material = material;
+            meshRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            meshRenderer.receiveShadows = false;
+
+            // Add collider
+            SphereCollider collider = obj.AddComponent<SphereCollider>();
+            collider.radius = colliderRadius / scale; // Adjust for object scale
+            if (physicsMaterial != null)
+                collider.material = physicsMaterial;
+
+            // Add rigidbody with zero gravity
+            Rigidbody rb = obj.AddComponent<Rigidbody>();
+            rb.mass = mass;
+            rb.useGravity = false; // Zero gravity - space simulation
+            rb.linearDamping = drag;
+            rb.angularDamping = angularDrag;
+            rb.linearVelocity = Vector3.zero; // Start stationary
+            rb.angularVelocity = Vector3.zero;
+            rb.interpolation = RigidbodyInterpolation.Interpolate;
+            rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+
+            // Add Meta XR Interaction SDK grab components (matching PooledRigid.prefab setup)
+
+            // 1. Grabbable - main grab handler with rigidbody reference
+            var grabbable = obj.AddComponent<Oculus.Interaction.Grabbable>();
+            grabbable.InjectOptionalRigidbody(rb);
+
+            // 2. HandGrabInteractable - for hand tracking grab
+            var handGrabInteractable = obj.AddComponent<Oculus.Interaction.HandGrab.HandGrabInteractable>();
+            handGrabInteractable.InjectRigidbody(rb);
+            handGrabInteractable.InjectOptionalPointableElement(grabbable);
+
+            // 3. GrabInteractable - for controller grab
+            var grabInteractable = obj.AddComponent<Oculus.Interaction.GrabInteractable>();
+            grabInteractable.InjectRigidbody(rb);
+            grabInteractable.InjectOptionalPointableElement(grabbable);
+
+            spawnedObjects.Add(obj);
+        }
+
+        t0.Stop();
+
+        LastJobMs = (float)t0.Elapsed.TotalMilliseconds;
+        LastJobCount = count;
+        LastUpdateFrame = Time.frameCount;
+
+        Debug.Log($"[CosmeticJobsController] Spawned {count} grabbable objects in {LastJobMs:F3} ms (zero gravity mode)");
     }
 
-    void InitializeParticles()
+    void ClearObjects()
     {
-        var job = new InitJob
+        foreach (var obj in spawnedObjects)
         {
-            min = spawnMin,
-            max = spawnMax,
-            speedMag = initialSpeed,
-            baseScale = baseScale,
-            randScaleMinMax = randomScale,
-            uniformYRotation = 1f, // upright
-            rngBase = new Rng(rngSeed == 0 ? 1u : rngSeed),
-            pos = pos,
-            vel = vel,
-            outMatrices = matrices
-        };
-
-        var handle = job.Schedule(count, 64);
-        handle.Complete();
+            if (obj != null)
+                Destroy(obj);
+        }
+        spawnedObjects.Clear();
     }
 
     void Update()
     {
         if (!initialized) return;
 
-        // ---- start timing the Burst job ----
-        var t0 = System.Diagnostics.Stopwatch.StartNew();
-
-        // Parallel integrate
-        var integrate = new IntegrateJob
-        {
-            dt = Time.deltaTime,
-            damping = damping,
-            pos = pos,
-            vel = vel,
-            outMatrices = matrices
-        };
-        var handle = integrate.Schedule(count, 128);
-        handle.Complete();
-
-        t0.Stop();
-
-        float jobMs = (float)t0.Elapsed.TotalMilliseconds;
-        LastJobMs = jobMs;
-        LastJobCount = count;
         LastUpdateFrame = Time.frameCount;
+        LastJobCount = spawnedObjects.Count;
 
-        if (Time.frameCount % 60 == 0) Debug.Log($"[CosmeticJobsController] Job: {jobMs:F3} ms  |  count={count}  |  frame={(Time.deltaTime * 1000f):F3} ms  |  workers={Unity.Jobs.LowLevel.Unsafe.JobsUtility.JobWorkerCount}");
-
-        // Draw (main thread)
-        DrawBatched();
-    }
-
-    void DrawBatched()
-    {
-        if (!material.enableInstancing) return;
-        int i = 0;
-        while (i < matrices.Length)
+        // Log stats periodically
+        if (Time.frameCount % 60 == 0)
         {
-            int n = math.min(1023, matrices.Length - i);
-            // convert float4x4 -> Matrix4x4
-            for (int j = 0; j < n; j++)
-                batch[j] = ToUnity(matrices[i + j]);
-
-            Graphics.DrawMeshInstanced(
-                mesh, 0, material, batch, n,
-                null, ShadowCastingMode.Off, false,
-                0, null, LightProbeUsage.Off, null);
-
-            i += n;
+            int activeCount = 0;
+            foreach (var obj in spawnedObjects)
+            {
+                if (obj != null && obj.activeInHierarchy)
+                    activeCount++;
+            }
+            Debug.Log($"[CosmeticJobsController] Active objects: {activeCount}  |  frame={(Time.deltaTime * 1000f):F3} ms");
         }
-    }
-
-    static Matrix4x4 ToUnity(float4x4 m)
-    {
-        Matrix4x4 u = new Matrix4x4();
-        u.m00 = m.c0.x; u.m10 = m.c0.y; u.m20 = m.c0.z; u.m30 = m.c0.w;
-        u.m01 = m.c1.x; u.m11 = m.c1.y; u.m21 = m.c1.z; u.m31 = m.c1.w;
-        u.m02 = m.c2.x; u.m12 = m.c2.y; u.m22 = m.c2.z; u.m32 = m.c2.w;
-        u.m03 = m.c3.x; u.m13 = m.c3.y; u.m23 = m.c3.z; u.m33 = m.c3.w;
-        return u;
     }
 
     void OnDisable()
@@ -220,20 +182,49 @@ public class CosmeticJobsController : MonoBehaviour
         ClearStats();
     }
 
-    void OnDestroy() => DisposeIfAllocated();
-
-    void DisposeIfAllocated()
+    void OnDestroy()
     {
-        if (pos.IsCreated) pos.Dispose();
-        if (vel.IsCreated) vel.Dispose();
-        if (matrices.IsCreated) matrices.Dispose();
+        ClearObjects();
     }
 
     public void ReinitializeNow()
     {
-        DisposeIfAllocated();  // free old NativeArrays if any
-        Allocate();            // allocate using the current 'count'
-        InitializeParticles(); // fill positions/velocities/matrices
+        ClearObjects();
+        SpawnObjects();
     }
 
+    /// <summary>
+    /// Apply an impulse to all objects (useful for testing collisions)
+    /// </summary>
+    public void ApplyImpulseToAll(Vector3 impulse)
+    {
+        foreach (var obj in spawnedObjects)
+        {
+            if (obj != null)
+            {
+                var rb = obj.GetComponent<Rigidbody>();
+                if (rb != null)
+                    rb.AddForce(impulse, ForceMode.Impulse);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Reset all objects to stationary
+    /// </summary>
+    public void ResetAllVelocities()
+    {
+        foreach (var obj in spawnedObjects)
+        {
+            if (obj != null)
+            {
+                var rb = obj.GetComponent<Rigidbody>();
+                if (rb != null)
+                {
+                    rb.linearVelocity = Vector3.zero;
+                    rb.angularVelocity = Vector3.zero;
+                }
+            }
+        }
+    }
 }
