@@ -2046,6 +2046,8 @@ MonoBehaviour:
   count: 2000
   spawnMin: {x: -3, y: 1, z: -3}
   spawnMax: {x: 3, y: 2, z: 3}
+  uniformSpawn: 1
+  uniformPadding: 0.2
   baseScale: 2
   randomScale: {x: 0.8, y: 1.2}
   mass: 1

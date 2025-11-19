@@ -24,6 +24,12 @@ public class CosmeticJobsController : MonoBehaviour
     public Vector3 spawnMin = new(-3f, 1f, -3f);
     public Vector3 spawnMax = new(3f, 2f, 3f);
 
+    [Header("Spawn Pattern")]
+    [Tooltip("Uniform: Spawns in a cube grid. Random: Spawns at random positions.")]
+    public bool uniformSpawn = true;
+    [Tooltip("Padding between objects in uniform mode (multiplier of object scale)")]
+    public float uniformPadding = 1.5f;
+
     [Header("Object Properties")]
     public float baseScale = 0.1f;
     public Vector2 randomScale = new(0.8f, 1.2f);
@@ -70,24 +76,58 @@ public class CosmeticJobsController : MonoBehaviour
         var rng = new System.Random((int)(rngSeed == 0 ? 1 : rngSeed));
         var t0 = System.Diagnostics.Stopwatch.StartNew();
 
+        // Calculate grid dimensions for uniform spawning
+        int gridSize = Mathf.CeilToInt(Mathf.Pow(count, 1f / 3f)); // Cube root, rounded up
+        Vector3 spawnCenter = (spawnMin + spawnMax) * 0.5f;
+        float avgScale = baseScale * (randomScale.x + randomScale.y) * 0.5f;
+        float spacing = avgScale * uniformPadding;
+
         for (int i = 0; i < count; i++)
         {
-            // Random position within spawn bounds
-            Vector3 position = new Vector3(
-                Mathf.Lerp(spawnMin.x, spawnMax.x, (float)rng.NextDouble()),
-                Mathf.Lerp(spawnMin.y, spawnMax.y, (float)rng.NextDouble()),
-                Mathf.Lerp(spawnMin.z, spawnMax.z, (float)rng.NextDouble())
-            );
+            Vector3 position;
+            float scale;
+            Quaternion rotation;
 
-            // Random scale
-            float scale = baseScale * Mathf.Lerp(randomScale.x, randomScale.y, (float)rng.NextDouble());
+            if (uniformSpawn)
+            {
+                // Calculate grid position (x, y, z indices)
+                int xi = i % gridSize;
+                int yi = (i / gridSize) % gridSize;
+                int zi = i / (gridSize * gridSize);
 
-            // Random rotation
-            Quaternion rotation = Quaternion.Euler(
-                (float)rng.NextDouble() * 360f,
-                (float)rng.NextDouble() * 360f,
-                (float)rng.NextDouble() * 360f
-            );
+                // Center the grid around spawn center
+                float gridOffset = (gridSize - 1) * spacing * 0.5f;
+                position = new Vector3(
+                    spawnCenter.x + (xi * spacing) - gridOffset,
+                    spawnCenter.y + (yi * spacing) - gridOffset,
+                    spawnCenter.z + (zi * spacing) - gridOffset
+                );
+
+                // Uniform scale for grid (no random variation)
+                scale = baseScale;
+
+                // No rotation for uniform grid (aligned)
+                rotation = Quaternion.identity;
+            }
+            else
+            {
+                // Random position within spawn bounds
+                position = new Vector3(
+                    Mathf.Lerp(spawnMin.x, spawnMax.x, (float)rng.NextDouble()),
+                    Mathf.Lerp(spawnMin.y, spawnMax.y, (float)rng.NextDouble()),
+                    Mathf.Lerp(spawnMin.z, spawnMax.z, (float)rng.NextDouble())
+                );
+
+                // Random scale
+                scale = baseScale * Mathf.Lerp(randomScale.x, randomScale.y, (float)rng.NextDouble());
+
+                // Random rotation
+                rotation = Quaternion.Euler(
+                    (float)rng.NextDouble() * 360f,
+                    (float)rng.NextDouble() * 360f,
+                    (float)rng.NextDouble() * 360f
+                );
+            }
 
             // Create GameObject
             GameObject obj = new GameObject($"GrabbableObject_{i}");
