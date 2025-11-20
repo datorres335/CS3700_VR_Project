@@ -19,9 +19,10 @@ public class ModeCycler : MonoBehaviour
     {
         var next = bench.mode switch
         {
+            BenchMode.Cosmetic => BenchMode.RigidOnly,
             BenchMode.RigidOnly => BenchMode.Fractured,
             BenchMode.Fractured => BenchMode.Cosmetic,
-            _ => BenchMode.RigidOnly
+            _ => BenchMode.Cosmetic
         };
         bench.RunMode(next);
         Debug.Log($"Bench mode => {next}");

@@ -74,7 +74,7 @@ public class SimplePool
 public class BenchManager : MonoBehaviour
 {
     [Header("Mode & counts")]
-    public BenchMode mode = BenchMode.RigidOnly;
+    public BenchMode mode = BenchMode.Cosmetic;
     [Min(0)] public int rigidCount = 150;
     [Min(0)] public int fracturedCount = 8;
     [Min(0)] public int cosmeticCount = 2000;
