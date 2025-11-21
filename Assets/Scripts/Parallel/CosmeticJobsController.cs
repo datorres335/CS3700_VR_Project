@@ -1,5 +1,10 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using Unity.Burst;
+using Unity.Collections;
+using Unity.Jobs;
+using Unity.Mathematics;
+using Rng = Unity.Mathematics.Random;
 
 /// <summary>
 /// Spawns grabbable rigidbodies in zero gravity.
@@ -8,6 +13,68 @@ using UnityEngine;
 public class CosmeticJobsController : MonoBehaviour
 {
     public enum ColliderType { Box, Sphere, Mesh }
+
+    // Parallel job for calculating spawn data
+    [BurstCompile]
+    struct CalculateSpawnDataJob : IJobParallelFor
+    {
+        // Input parameters
+        public bool uniformSpawn;
+        public int gridSize;
+        public float3 spawnCenter;
+        public float3 spawnMin;
+        public float3 spawnMax;
+        public float baseScale;
+        public float2 randomScaleRange;
+        public float spacing;
+        public Rng rngBase;
+
+        // Output arrays
+        [WriteOnly] public NativeArray<float3> positions;
+        [WriteOnly] public NativeArray<quaternion> rotations;
+        [WriteOnly] public NativeArray<float> scales;
+
+        public void Execute(int i)
+        {
+            if (uniformSpawn)
+            {
+                // Calculate grid position
+                int xi = i % gridSize;
+                int yi = (i / gridSize) % gridSize;
+                int zi = i / (gridSize * gridSize);
+
+                // Center the grid around spawn center
+                float gridOffset = (gridSize - 1) * spacing * 0.5f;
+                positions[i] = new float3(
+                    spawnCenter.x + (xi * spacing) - gridOffset,
+                    spawnCenter.y + (yi * spacing) - gridOffset,
+                    spawnCenter.z + (zi * spacing) - gridOffset
+                );
+
+                // Uniform scale, no rotation
+                scales[i] = baseScale;
+                rotations[i] = quaternion.identity;
+            }
+            else
+            {
+                // Random spawning with unique RNG per object
+                var rng = new Rng(rngBase.state + (uint)i);
+
+                // Random position
+                positions[i] = math.lerp(spawnMin, spawnMax, rng.NextFloat3());
+
+                // Random scale
+                scales[i] = baseScale * math.lerp(randomScaleRange.x, randomScaleRange.y, rng.NextFloat());
+
+                // Random rotation
+                rotations[i] = quaternion.Euler(
+                    rng.NextFloat() * math.PI * 2f,
+                    rng.NextFloat() * math.PI * 2f,
+                    rng.NextFloat() * math.PI * 2f
+                );
+            }
+        }
+    }
 
     public static float LastJobMs { get; private set; }
     public static int LastJobCount { get; private set; }
@@ -73,61 +140,51 @@ public class CosmeticJobsController : MonoBehaviour
     {
         ClearObjects();
 
-        var rng = new System.Random((int)(rngSeed == 0 ? 1 : rngSeed));
         var t0 = System.Diagnostics.Stopwatch.StartNew();
 
         // Calculate grid dimensions for uniform spawning
-        int gridSize = Mathf.CeilToInt(Mathf.Pow(count, 1f / 3f)); // Cube root, rounded up
-        Vector3 spawnCenter = (spawnMin + spawnMax) * 0.5f;
+        int gridSize = Mathf.CeilToInt(Mathf.Pow(count, 1f / 3f));
+        float3 center = new float3((spawnMin + spawnMax) * 0.5f);
         float avgScale = baseScale * (randomScale.x + randomScale.y) * 0.5f;
         float spacing = avgScale * uniformPadding;
 
+        // Allocate NativeArrays for parallel job results
+        var positions = new NativeArray<float3>(count, Allocator.TempJob);
+        var rotations = new NativeArray<quaternion>(count, Allocator.TempJob);
+        var scales = new NativeArray<float>(count, Allocator.TempJob);
+
+        // Set up parallel job
+        var job = new CalculateSpawnDataJob
+        {
+            uniformSpawn = uniformSpawn,
+            gridSize = gridSize,
+            spawnCenter = center,
+            spawnMin = spawnMin,
+            spawnMax = spawnMax,
+            baseScale = baseScale,
+            randomScaleRange = new float2(randomScale.x, randomScale.y),
+            spacing = spacing,
+            rngBase = new Rng(rngSeed == 0 ? 1u : rngSeed),
+            positions = positions,
+            rotations = rotations,
+            scales = scales
+        };
+
+        // Schedule parallel job (batch size 64 for good load balancing)
+        JobHandle handle = job.Schedule(count, 64);
+        handle.Complete(); // Wait for all threads to finish
+
+        t0.Stop();
+        LastJobMs = (float)t0.Elapsed.TotalMilliseconds;
+
+        // Now create GameObjects using the calculated data (main thread only)
+        var t1 = System.Diagnostics.Stopwatch.StartNew();
+
         for (int i = 0; i < count; i++)
         {
-            Vector3 position;
-            float scale;
-            Quaternion rotation;
-
-            if (uniformSpawn)
-            {
-                // Calculate grid position (x, y, z indices)
-                int xi = i % gridSize;
-                int yi = (i / gridSize) % gridSize;
-                int zi = i / (gridSize * gridSize);
-
-                // Center the grid around spawn center
-                float gridOffset = (gridSize - 1) * spacing * 0.5f;
-                position = new Vector3(
-                    spawnCenter.x + (xi * spacing) - gridOffset,
-                    spawnCenter.y + (yi * spacing) - gridOffset,
-                    spawnCenter.z + (zi * spacing) - gridOffset
-                );
-
-                // Uniform scale for grid (no random variation)
-                scale = baseScale;
-
-                // No rotation for uniform grid (aligned)
-                rotation = Quaternion.identity;
-            }
-            else
-            {
-                // Random position within spawn bounds
-                position = new Vector3(
-                    Mathf.Lerp(spawnMin.x, spawnMax.x, (float)rng.NextDouble()),
-                    Mathf.Lerp(spawnMin.y, spawnMax.y, (float)rng.NextDouble()),
-                    Mathf.Lerp(spawnMin.z, spawnMax.z, (float)rng.NextDouble())
-                );
-
-                // Random scale
-                scale = baseScale * Mathf.Lerp(randomScale.x, randomScale.y, (float)rng.NextDouble());
-
-                // Random rotation
-                rotation = Quaternion.Euler(
-                    (float)rng.NextDouble() * 360f,
-                    (float)rng.NextDouble() * 360f,
-                    (float)rng.NextDouble() * 360f
-                );
-            }
+            Vector3 position = positions[i];
+            Quaternion rotation = rotations[i];
+            float scale = scales[i];
 
             // Create GameObject
             GameObject obj = new GameObject($"GrabbableObject_{i}");
@@ -207,13 +264,21 @@ public class CosmeticJobsController : MonoBehaviour
             spawnedObjects.Add(obj);
         }
 
-        t0.Stop();
+        t1.Stop();
 
-        LastJobMs = (float)t0.Elapsed.TotalMilliseconds;
+        // Dispose NativeArrays
+        positions.Dispose();
+        rotations.Dispose();
+        scales.Dispose();
+
+        // Update stats
         LastJobCount = count;
         LastUpdateFrame = Time.frameCount;
 
-        Debug.Log($"[CosmeticJobsController] Spawned {count} grabbable objects in {LastJobMs:F3} ms (zero gravity mode)");
+        float gameObjectMs = (float)t1.Elapsed.TotalMilliseconds;
+        float totalMs = LastJobMs + gameObjectMs;
+
+        Debug.Log($"[CosmeticJobsController] Parallel job: {LastJobMs:F3} ms | GameObject creation: {gameObjectMs:F3} ms | Total: {totalMs:F3} ms | Workers: {WorkerCount}");
     }
 
     void ClearObjects()

@@ -36,11 +36,10 @@ public class StatsOverlay : MonoBehaviour
 
         // build text
         sb.Clear();
-        sb.AppendLine("<b>VR Sandbox Stats</b>");
+        sb.AppendLine("<b>Performance Stats</b>");
         sb.AppendFormat("FPS: {0:0.0}  ({1:0.00} ms)\n", fps, ms);
         sb.AppendFormat("FixedUpdate: {0:0.00} ms  (target {1:0.000}s)\n", fixedMs, Time.fixedDeltaTime);
         sb.AppendFormat("Rigidbodies: {0}\n", rbCount);
-        sb.AppendLine("Debris (cosmetic): 0  (Phase 2+)");
         sb.AppendFormat("Draw Calls (approx): {0}\n", UnityStats.drawCalls);
 
         // append job system stats (if available)
