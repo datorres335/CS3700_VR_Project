@@ -3177,7 +3177,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 3650784737428822905, guid: f0b2a01365b661344ba6120bf492f58c, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1651744329}
   m_SourcePrefab: {fileID: 100100000, guid: f0b2a01365b661344ba6120bf492f58c, type: 3}
 --- !u!114 &1421865487 stripped
 MonoBehaviour:
@@ -3978,6 +3981,28 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.TextMeshPro::TMPro.TextMeshProUGUI
+--- !u!1 &1651744320 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 3650784737428822905, guid: f0b2a01365b661344ba6120bf492f58c, type: 3}
+  m_PrefabInstance: {fileID: 1382830288}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1651744329
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1651744320}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 24140e7f2c0478647b4ea21a1fe5d5a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ResetPositionOnButton
+  controllerHand: 1
+  resetButton: 0
+  requireHold: 1
+  holdDuration: 0.5
+  showDebugLogs: 0
 --- !u!1 &1671087468
 GameObject:
   m_ObjectHideFlags: 0
