@@ -90,7 +90,8 @@ public class BenchManager : MonoBehaviour
     public Material cosmeticMaterial;      // DebrisMat (Enable GPU Instancing ?)
 
     [Header("Cosmetic mode selection")]
-    public bool useParallelCosmetic = true;          // toggle in Inspector
+    [Tooltip("Toggle between Parallel (multi-core) and Serial (single-core) execution for class demonstration")]
+    public bool useParallelCosmetic = true;
     public CosmeticJobsController jobsController;    // drag the CosmeticJobs here
     public float cosmeticBaseScale = 1f;             // pass-through to jobs
     public Vector2 cosmeticRandomScale = new(0.8f, 1.2f);
@@ -158,35 +159,31 @@ public class BenchManager : MonoBehaviour
                 break;
 
             case BenchMode.Cosmetic:
-                if (useParallelCosmetic && jobsController != null)
+                // Always use jobsController for cosmetic mode (creates grabbable GameObjects)
+                if (jobsController != null)
                 {
-                    // Configure + enable the parallel jobs controller
+                    // Configure the jobs controller
                     jobsController.count = Mathf.Max(0, cosmeticCount);
                     jobsController.spawnMin = spawnMin;
                     jobsController.spawnMax = spawnMax;
                     jobsController.baseScale = cosmeticBaseScale;
                     jobsController.randomScale = cosmeticRandomScale;
 
-                    // make sure it uses the same mesh/material you assigned to BenchManager
+                    // Set execution mode: Parallel (multi-core) or Serial (single-core)
+                    jobsController.useParallelProcessing = useParallelCosmetic;
+
+                    // Make sure it uses the same mesh/material you assigned to BenchManager
                     if (cosmeticMesh) jobsController.mesh = cosmeticMesh;
                     if (cosmeticMaterial) jobsController.material = cosmeticMaterial;
 
-                    jobsController.enabled = true;     // it will (re)initialize in Start/OnEnable
-                    
-                    // 👉 force it to rebuild arrays with the new settings
+                    jobsController.enabled = true;
+
+                    // Force rebuild with new settings
                     jobsController.ReinitializeNow();
                 }
                 else
                 {
-                    // Use the original static cosmetic path
-                    if (debrisRenderer)
-                    {
-                        debrisRenderer.mesh = cosmeticMesh;
-                        debrisRenderer.material = cosmeticMaterial;
-                        debrisRenderer.matrices.Clear();
-                        SpawnCosmetic();  // your existing static fill
-                        debrisRenderer.gameObject.SetActive(true);
-                    }
+                    Debug.LogWarning("BenchManager: CosmeticJobsController not assigned. Cannot spawn cosmetic objects.");
                 }
                 break;
         }

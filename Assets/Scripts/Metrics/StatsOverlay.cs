@@ -42,14 +42,29 @@ public class StatsOverlay : MonoBehaviour
         sb.AppendFormat("Rigidbodies: {0}\n", rbCount);
         sb.AppendFormat("Draw Calls (approx): {0}\n", UnityStats.drawCalls);
 
-        // append job system stats (if available)
+        // append parallel processing comparison stats (if available)
         if (CosmeticJobsController.LastJobCount > 0)
         {
             sb.AppendLine();
-            sb.AppendLine("<b>Parallel Jobs</b>");
-            sb.AppendFormat("Job Time: {0:0.000} ms\n", CosmeticJobsController.LastJobMs);
-            sb.AppendFormat("Job Count: {0}\n", CosmeticJobsController.LastJobCount);
-            sb.AppendFormat("Worker Threads: {0}\n", CosmeticJobsController.WorkerCount);
+            sb.AppendLine("<b>Parallel Processing Comparison</b>");
+
+            // Current execution mode
+            string mode = CosmeticJobsController.IsUsingParallel
+                ? $"Parallel ({CosmeticJobsController.WorkerCount} cores)"
+                : "Serial (1 core)";
+            sb.AppendFormat("Mode: {0}\n", mode);
+
+            // Timing breakdown
+            sb.AppendFormat("Calculation: {0:0.000} ms\n", CosmeticJobsController.LastCalculationMs);
+            sb.AppendFormat("GameObject Creation: {0:0.000} ms\n", CosmeticJobsController.LastGameObjectMs);
+            sb.AppendFormat("Total Spawn: {0:0.000} ms\n", CosmeticJobsController.LastTotalMs);
+            sb.AppendFormat("Object Count: {0}\n", CosmeticJobsController.LastJobCount);
+
+            // Show speedup factor if we have both serial and parallel measurements
+            if (CosmeticJobsController.SpeedupFactor > 0f)
+            {
+                sb.AppendFormat("Speedup: {0:0.0}x faster\n", CosmeticJobsController.SpeedupFactor);
+            }
         }
 
         statsText.text = sb.ToString();
