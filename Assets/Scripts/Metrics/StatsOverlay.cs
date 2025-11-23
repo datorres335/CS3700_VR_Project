@@ -61,10 +61,10 @@ public class StatsOverlay : MonoBehaviour
             sb.AppendFormat("Object Count: {0}\n", CosmeticJobsController.LastJobCount);
 
             // Show speedup factor if we have both serial and parallel measurements
-            if (CosmeticJobsController.SpeedupFactor > 0f)
-            {
-                sb.AppendFormat("Speedup: {0:0.0}x faster\n", CosmeticJobsController.SpeedupFactor);
-            }
+            //if (CosmeticJobsController.SpeedupFactor > 0f)
+            //{
+            //    sb.AppendFormat("Speedup: {0:0.0}x faster\n", CosmeticJobsController.SpeedupFactor);
+            //}
         }
 
         statsText.text = sb.ToString();

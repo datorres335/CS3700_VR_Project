@@ -10,29 +10,24 @@ public class CosmeticJobsController : MonoBehaviour
 {
     public enum ColliderType { Box, Sphere, Mesh }
 
-    // Parallel job for calculating spawn data (uniform grid only)
     [BurstCompile]
     struct CalculateSpawnDataJob : IJobParallelFor
     {
-        // Input parameters
         public int gridSize;
         public float3 spawnCenter;
         public float baseScale;
         public float spacing;
 
-        // Output arrays
         [WriteOnly] public NativeArray<float3> positions;
         [WriteOnly] public NativeArray<quaternion> rotations;
         [WriteOnly] public NativeArray<float> scales;
 
         public void Execute(int i)
         {
-            // Calculate grid position
             int xi = i % gridSize;
             int yi = (i / gridSize) % gridSize;
             int zi = i / (gridSize * gridSize);
 
-            // Center the grid around spawn center
             float gridOffset = (gridSize - 1) * spacing * 0.5f;
             positions[i] = new float3(
                 spawnCenter.x + (xi * spacing) - gridOffset,
@@ -40,22 +35,18 @@ public class CosmeticJobsController : MonoBehaviour
                 spawnCenter.z + (zi * spacing) - gridOffset
             );
 
-            // Uniform scale, no rotation
             scales[i] = baseScale;
             rotations[i] = quaternion.identity;
         }
     }
 
-    // Performance metrics for serial vs parallel comparison
     public static float LastCalculationMs { get; private set; }     // Time to calculate spawn data (serial or parallel)
     public static float LastGameObjectMs { get; private set; }      // Time to create GameObjects (always serial)
     public static float LastTotalMs { get; private set; }           // Total spawn time
     public static bool IsUsingParallel { get; private set; }        // Current execution mode
     public static float SerialCalculationMs { get; private set; }   // Last serial calculation time
     public static float ParallelCalculationMs { get; private set; } // Last parallel calculation time
-    public static float SpeedupFactor { get; private set; }         // Parallel speedup (SerialTime / ParallelTime)
 
-    // Legacy metrics (kept for compatibility)
     public static float LastJobMs => LastCalculationMs;
     public static int LastJobCount { get; private set; }
     public static int WorkerCount => SystemInfo.processorCount;
@@ -90,7 +81,6 @@ public class CosmeticJobsController : MonoBehaviour
     public ColliderType colliderType = ColliderType.Box;
     public PhysicsMaterial physicsMaterial;
 
-    // Spawned objects
     List<GameObject> spawnedObjects = new List<GameObject>();
     bool initialized;
 
@@ -102,7 +92,6 @@ public class CosmeticJobsController : MonoBehaviour
         LastJobCount = 0;
         LastUpdateFrame = -1;
         IsUsingParallel = false;
-        // Note: SerialCalculationMs, ParallelCalculationMs, and SpeedupFactor are preserved for comparison
     }
 
     void Start()
@@ -118,10 +107,6 @@ public class CosmeticJobsController : MonoBehaviour
         initialized = true;
     }
 
-    /// <summary>
-    /// Serial (single-threaded) calculation of spawn data - for comparison with parallel version
-    /// Spawns objects in a uniform grid pattern
-    /// </summary>
     void CalculateSpawnDataSerial(
         NativeArray<float3> positions,
         NativeArray<quaternion> rotations,
@@ -133,12 +118,11 @@ public class CosmeticJobsController : MonoBehaviour
     {
         for (int i = 0; i < positions.Length; i++)
         {
-            // Calculate grid position (same logic as parallel job)
+            // Calculate grid position
             int xi = i % gridSize;
             int yi = (i / gridSize) % gridSize;
             int zi = i / (gridSize * gridSize);
 
-            // Center the grid around spawn center
             float gridOffset = (gridSize - 1) * spacing * 0.5f;
             positions[i] = new float3(
                 spawnCenter.x + (xi * spacing) - gridOffset,
@@ -146,7 +130,6 @@ public class CosmeticJobsController : MonoBehaviour
                 spawnCenter.z + (zi * spacing) - gridOffset
             );
 
-            // Uniform scale, no rotation
             scales[i] = baseScale;
             rotations[i] = quaternion.identity;
         }
@@ -159,20 +142,16 @@ public class CosmeticJobsController : MonoBehaviour
         var totalTimer = System.Diagnostics.Stopwatch.StartNew();
         var calculationTimer = System.Diagnostics.Stopwatch.StartNew();
 
-        // Calculate grid dimensions for uniform spawning
         int gridSize = Mathf.CeilToInt(Mathf.Pow(count, 1f / 3f));
         float3 center = new float3((spawnMin + spawnMax) * 0.5f);
         float spacing = baseScale * uniformPadding;
 
-        // Allocate arrays for spawn data
         var positions = new NativeArray<float3>(count, Allocator.TempJob);
         var rotations = new NativeArray<quaternion>(count, Allocator.TempJob);
         var scales = new NativeArray<float>(count, Allocator.TempJob);
 
-        // Choose execution path: Serial or Parallel
         if (useParallelProcessing)
         {
-            // PARALLEL PATH: Use Unity Jobs System with Burst compilation
             var job = new CalculateSpawnDataJob
             {
                 gridSize = gridSize,
@@ -184,8 +163,7 @@ public class CosmeticJobsController : MonoBehaviour
                 scales = scales
             };
 
-            // Schedule parallel job (batch size 64 for good load balancing across cores)
-            JobHandle handle = job.Schedule(count, 64);
+            JobHandle handle = job.Schedule(count, 64); // batch size 64 for good load balancing across cores
             handle.Complete(); // Wait for all worker threads to finish
 
             calculationTimer.Stop();
@@ -193,9 +171,8 @@ public class CosmeticJobsController : MonoBehaviour
             ParallelCalculationMs = LastCalculationMs;
             IsUsingParallel = true;
         }
-        else
+        else // SERIAL PATH
         {
-            // SERIAL PATH: Single-threaded for-loop on main thread (for comparison)
             CalculateSpawnDataSerial(
                 positions, rotations, scales,
                 gridSize, center, baseScale, spacing
@@ -207,13 +184,6 @@ public class CosmeticJobsController : MonoBehaviour
             IsUsingParallel = false;
         }
 
-        // Calculate speedup factor if we have both measurements
-        if (SerialCalculationMs > 0f && ParallelCalculationMs > 0f)
-        {
-            SpeedupFactor = SerialCalculationMs / ParallelCalculationMs;
-        }
-
-        // Now create GameObjects using the calculated data (main thread only)
         var gameObjectTimer = System.Diagnostics.Stopwatch.StartNew();
 
         for (int i = 0; i < count; i++)
@@ -222,14 +192,12 @@ public class CosmeticJobsController : MonoBehaviour
             Quaternion rotation = rotations[i];
             float scale = scales[i];
 
-            // Create GameObject
             GameObject obj = new GameObject($"GrabbableObject_{i}");
             obj.transform.parent = transform;
             obj.transform.position = position;
             obj.transform.rotation = rotation;
             obj.transform.localScale = Vector3.one * scale;
 
-            // Add mesh rendering
             MeshFilter meshFilter = obj.AddComponent<MeshFilter>();
             meshFilter.mesh = mesh;
 
@@ -238,12 +206,10 @@ public class CosmeticJobsController : MonoBehaviour
             meshRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             meshRenderer.receiveShadows = false;
 
-            // Add collider based on selected type
             Collider collider = null;
             switch (colliderType)
             {
                 case ColliderType.Box:
-                    // BoxCollider automatically sizes to mesh bounds
                     var boxCol = obj.AddComponent<BoxCollider>();
                     boxCol.center = mesh.bounds.center;
                     boxCol.size = mesh.bounds.size;
@@ -251,7 +217,6 @@ public class CosmeticJobsController : MonoBehaviour
                     break;
 
                 case ColliderType.Sphere:
-                    // SphereCollider uses mesh bounds to determine radius
                     var sphereCol = obj.AddComponent<SphereCollider>();
                     sphereCol.center = mesh.bounds.center;
                     sphereCol.radius = mesh.bounds.extents.magnitude * 0.5f;
@@ -259,10 +224,9 @@ public class CosmeticJobsController : MonoBehaviour
                     break;
 
                 case ColliderType.Mesh:
-                    // MeshCollider for exact collision (must be convex for rigidbody)
                     var meshCol = obj.AddComponent<MeshCollider>();
                     meshCol.sharedMesh = mesh;
-                    meshCol.convex = true; // Required for rigidbody interaction
+                    meshCol.convex = true;
                     collider = meshCol;
                     break;
             }
@@ -270,29 +234,23 @@ public class CosmeticJobsController : MonoBehaviour
             if (collider != null && physicsMaterial != null)
                 collider.material = physicsMaterial;
 
-            // Add rigidbody with zero gravity
             Rigidbody rb = obj.AddComponent<Rigidbody>();
             rb.mass = mass;
-            rb.useGravity = false; // Zero gravity - space simulation
+            rb.useGravity = false;
             rb.linearDamping = drag;
             rb.angularDamping = angularDrag;
-            rb.linearVelocity = Vector3.zero; // Start stationary
+            rb.linearVelocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
             rb.interpolation = RigidbodyInterpolation.Interpolate;
             rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
 
-            // Add Meta XR Interaction SDK grab components (matching PooledRigid.prefab setup)
-
-            // 1. Grabbable - main grab handler with rigidbody reference
             var grabbable = obj.AddComponent<Oculus.Interaction.Grabbable>();
             grabbable.InjectOptionalRigidbody(rb);
 
-            // 2. HandGrabInteractable - for hand tracking grab
             var handGrabInteractable = obj.AddComponent<Oculus.Interaction.HandGrab.HandGrabInteractable>();
             handGrabInteractable.InjectRigidbody(rb);
             handGrabInteractable.InjectOptionalPointableElement(grabbable);
 
-            // 3. GrabInteractable - for controller grab
             var grabInteractable = obj.AddComponent<Oculus.Interaction.GrabInteractable>();
             grabInteractable.InjectRigidbody(rb);
             grabInteractable.InjectOptionalPointableElement(grabbable);
@@ -303,21 +261,14 @@ public class CosmeticJobsController : MonoBehaviour
         gameObjectTimer.Stop();
         totalTimer.Stop();
 
-        // Dispose NativeArrays
         positions.Dispose();
         rotations.Dispose();
         scales.Dispose();
 
-        // Update stats
         LastGameObjectMs = (float)gameObjectTimer.Elapsed.TotalMilliseconds;
         LastTotalMs = (float)totalTimer.Elapsed.TotalMilliseconds;
         LastJobCount = count;
         LastUpdateFrame = Time.frameCount;
-
-        // Log performance metrics
-        string mode = IsUsingParallel ? "Parallel" : "Serial";
-        string speedupInfo = (SpeedupFactor > 0f) ? $" | Speedup: {SpeedupFactor:F2}x" : "";
-        Debug.Log($"[CosmeticJobsController] Mode: {mode} | Calculation: {LastCalculationMs:F3} ms | GameObject creation: {LastGameObjectMs:F3} ms | Total: {LastTotalMs:F3} ms | Workers: {WorkerCount}{speedupInfo}");
     }
 
     void ClearObjects()
@@ -337,7 +288,6 @@ public class CosmeticJobsController : MonoBehaviour
         LastUpdateFrame = Time.frameCount;
         LastJobCount = spawnedObjects.Count;
 
-        // Log stats periodically
         if (Time.frameCount % 60 == 0)
         {
             int activeCount = 0;
@@ -366,9 +316,6 @@ public class CosmeticJobsController : MonoBehaviour
         SpawnObjects();
     }
 
-    /// <summary>
-    /// Apply an impulse to all objects (useful for testing collisions)
-    /// </summary>
     public void ApplyImpulseToAll(Vector3 impulse)
     {
         foreach (var obj in spawnedObjects)
@@ -382,9 +329,6 @@ public class CosmeticJobsController : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Reset all objects to stationary
-    /// </summary>
     public void ResetAllVelocities()
     {
         foreach (var obj in spawnedObjects)
