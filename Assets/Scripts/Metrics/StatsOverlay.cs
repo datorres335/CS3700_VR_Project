@@ -55,9 +55,9 @@ public class StatsOverlay : MonoBehaviour
             sb.AppendFormat("Mode: {0}\n", mode);
 
             // Timing breakdown
-            sb.AppendFormat("Calculation: {0:0.000} ms\n", CosmeticJobsController.LastCalculationMs);
-            sb.AppendFormat("GameObject Creation: {0:0.000} ms\n", CosmeticJobsController.LastGameObjectMs);
-            sb.AppendFormat("Total Spawn: {0:0.000} ms\n", CosmeticJobsController.LastTotalMs);
+            sb.AppendFormat("Calculation Time: {0:0.000} ms\n", CosmeticJobsController.LastCalculationMs);
+            //sb.AppendFormat("GameObject Creation: {0:0.000} ms\n", CosmeticJobsController.LastGameObjectMs);
+            //sb.AppendFormat("Total Spawn: {0:0.000} ms\n", CosmeticJobsController.LastTotalMs);
             sb.AppendFormat("Object Count: {0}\n", CosmeticJobsController.LastJobCount);
 
             // Show speedup factor if we have both serial and parallel measurements
