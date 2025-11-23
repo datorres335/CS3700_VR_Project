@@ -38,7 +38,7 @@ public class StatsOverlay : MonoBehaviour
         sb.Clear();
         sb.AppendLine("<b>Performance Stats</b>");
         sb.AppendFormat("FPS: {0:0.0}  ({1:0.00} ms)\n", fps, ms);
-        sb.AppendFormat("FixedUpdate: {0:0.00} ms  (target {1:0.000}s)\n", fixedMs, Time.fixedDeltaTime);
+        //sb.AppendFormat("FixedUpdate: {0:0.00} ms  (target {1:0.000}s)\n", fixedMs, Time.fixedDeltaTime);
         sb.AppendFormat("Rigidbodies: {0}\n", rbCount);
         sb.AppendFormat("Draw Calls (approx): {0}\n", UnityStats.drawCalls);
 
