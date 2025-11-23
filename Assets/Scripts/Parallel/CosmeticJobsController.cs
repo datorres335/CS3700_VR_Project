@@ -4,30 +4,21 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
-using Rng = Unity.Mathematics.Random;
 
-/// <summary>
-/// Spawns grabbable rigidbodies in zero gravity.
-/// Objects start stationary and only move when colliding or grabbed/thrown.
-/// </summary>
+
 public class CosmeticJobsController : MonoBehaviour
 {
     public enum ColliderType { Box, Sphere, Mesh }
 
-    // Parallel job for calculating spawn data
+    // Parallel job for calculating spawn data (uniform grid only)
     [BurstCompile]
     struct CalculateSpawnDataJob : IJobParallelFor
     {
         // Input parameters
-        public bool uniformSpawn;
         public int gridSize;
         public float3 spawnCenter;
-        public float3 spawnMin;
-        public float3 spawnMax;
         public float baseScale;
-        public float2 randomScaleRange;
         public float spacing;
-        public Rng rngBase;
 
         // Output arrays
         [WriteOnly] public NativeArray<float3> positions;
@@ -36,43 +27,22 @@ public class CosmeticJobsController : MonoBehaviour
 
         public void Execute(int i)
         {
-            if (uniformSpawn)
-            {
-                // Calculate grid position
-                int xi = i % gridSize;
-                int yi = (i / gridSize) % gridSize;
-                int zi = i / (gridSize * gridSize);
+            // Calculate grid position
+            int xi = i % gridSize;
+            int yi = (i / gridSize) % gridSize;
+            int zi = i / (gridSize * gridSize);
 
-                // Center the grid around spawn center
-                float gridOffset = (gridSize - 1) * spacing * 0.5f;
-                positions[i] = new float3(
-                    spawnCenter.x + (xi * spacing) - gridOffset,
-                    spawnCenter.y + (yi * spacing) - gridOffset,
-                    spawnCenter.z + (zi * spacing) - gridOffset
-                );
+            // Center the grid around spawn center
+            float gridOffset = (gridSize - 1) * spacing * 0.5f;
+            positions[i] = new float3(
+                spawnCenter.x + (xi * spacing) - gridOffset,
+                spawnCenter.y + (yi * spacing) - gridOffset,
+                spawnCenter.z + (zi * spacing) - gridOffset
+            );
 
-                // Uniform scale, no rotation
-                scales[i] = baseScale;
-                rotations[i] = quaternion.identity;
-            }
-            else
-            {
-                // Random spawning with unique RNG per object
-                var rng = new Rng(rngBase.state + (uint)i);
-
-                // Random position
-                positions[i] = math.lerp(spawnMin, spawnMax, rng.NextFloat3());
-
-                // Random scale
-                scales[i] = baseScale * math.lerp(randomScaleRange.x, randomScaleRange.y, rng.NextFloat());
-
-                // Random rotation
-                rotations[i] = quaternion.Euler(
-                    rng.NextFloat() * math.PI * 2f,
-                    rng.NextFloat() * math.PI * 2f,
-                    rng.NextFloat() * math.PI * 2f
-                );
-            }
+            // Uniform scale, no rotation
+            scales[i] = baseScale;
+            rotations[i] = quaternion.identity;
         }
     }
 
@@ -106,14 +76,11 @@ public class CosmeticJobsController : MonoBehaviour
     public Vector3 spawnMax = new(3f, 2f, 3f);
 
     [Header("Spawn Pattern")]
-    [Tooltip("Uniform: Spawns in a cube grid. Random: Spawns at random positions.")]
-    public bool uniformSpawn = true;
-    [Tooltip("Padding between objects in uniform mode (multiplier of object scale)")]
+    [Tooltip("Padding between objects in uniform grid (multiplier of object scale)")]
     public float uniformPadding = 1.5f;
 
     [Header("Object Properties")]
     public float baseScale = 0.1f;
-    public Vector2 randomScale = new(0.8f, 1.2f);
     public float mass = 1f;
     public float drag = 0.1f;
     public float angularDrag = 0.5f;
@@ -122,9 +89,6 @@ public class CosmeticJobsController : MonoBehaviour
     [Tooltip("Box: Best for brick/cube shapes. Mesh: Exact fit but more expensive.")]
     public ColliderType colliderType = ColliderType.Box;
     public PhysicsMaterial physicsMaterial;
-
-    [Header("Seed")]
-    public uint rngSeed = 123u;
 
     // Spawned objects
     List<GameObject> spawnedObjects = new List<GameObject>();
@@ -156,60 +120,35 @@ public class CosmeticJobsController : MonoBehaviour
 
     /// <summary>
     /// Serial (single-threaded) calculation of spawn data - for comparison with parallel version
+    /// Spawns objects in a uniform grid pattern
     /// </summary>
     void CalculateSpawnDataSerial(
         NativeArray<float3> positions,
         NativeArray<quaternion> rotations,
         NativeArray<float> scales,
-        bool uniformSpawn,
         int gridSize,
         float3 spawnCenter,
-        Vector3 spawnMin,
-        Vector3 spawnMax,
         float baseScale,
-        float2 randomScaleRange,
-        float spacing,
-        Rng rngBase)
+        float spacing)
     {
         for (int i = 0; i < positions.Length; i++)
         {
-            if (uniformSpawn)
-            {
-                // Calculate grid position (same logic as parallel job)
-                int xi = i % gridSize;
-                int yi = (i / gridSize) % gridSize;
-                int zi = i / (gridSize * gridSize);
+            // Calculate grid position (same logic as parallel job)
+            int xi = i % gridSize;
+            int yi = (i / gridSize) % gridSize;
+            int zi = i / (gridSize * gridSize);
 
-                // Center the grid around spawn center
-                float gridOffset = (gridSize - 1) * spacing * 0.5f;
-                positions[i] = new float3(
-                    spawnCenter.x + (xi * spacing) - gridOffset,
-                    spawnCenter.y + (yi * spacing) - gridOffset,
-                    spawnCenter.z + (zi * spacing) - gridOffset
-                );
+            // Center the grid around spawn center
+            float gridOffset = (gridSize - 1) * spacing * 0.5f;
+            positions[i] = new float3(
+                spawnCenter.x + (xi * spacing) - gridOffset,
+                spawnCenter.y + (yi * spacing) - gridOffset,
+                spawnCenter.z + (zi * spacing) - gridOffset
+            );
 
-                // Uniform scale, no rotation
-                scales[i] = baseScale;
-                rotations[i] = quaternion.identity;
-            }
-            else
-            {
-                // Random spawning with unique RNG per object (same logic as parallel job)
-                var rng = new Rng(rngBase.state + (uint)i);
-
-                // Random position
-                positions[i] = math.lerp(spawnMin, spawnMax, rng.NextFloat3());
-
-                // Random scale
-                scales[i] = baseScale * math.lerp(randomScaleRange.x, randomScaleRange.y, rng.NextFloat());
-
-                // Random rotation
-                rotations[i] = quaternion.Euler(
-                    rng.NextFloat() * math.PI * 2f,
-                    rng.NextFloat() * math.PI * 2f,
-                    rng.NextFloat() * math.PI * 2f
-                );
-            }
+            // Uniform scale, no rotation
+            scales[i] = baseScale;
+            rotations[i] = quaternion.identity;
         }
     }
 
@@ -223,8 +162,7 @@ public class CosmeticJobsController : MonoBehaviour
         // Calculate grid dimensions for uniform spawning
         int gridSize = Mathf.CeilToInt(Mathf.Pow(count, 1f / 3f));
         float3 center = new float3((spawnMin + spawnMax) * 0.5f);
-        float avgScale = baseScale * (randomScale.x + randomScale.y) * 0.5f;
-        float spacing = avgScale * uniformPadding;
+        float spacing = baseScale * uniformPadding;
 
         // Allocate arrays for spawn data
         var positions = new NativeArray<float3>(count, Allocator.TempJob);
@@ -237,15 +175,10 @@ public class CosmeticJobsController : MonoBehaviour
             // PARALLEL PATH: Use Unity Jobs System with Burst compilation
             var job = new CalculateSpawnDataJob
             {
-                uniformSpawn = uniformSpawn,
                 gridSize = gridSize,
                 spawnCenter = center,
-                spawnMin = spawnMin,
-                spawnMax = spawnMax,
                 baseScale = baseScale,
-                randomScaleRange = new float2(randomScale.x, randomScale.y),
                 spacing = spacing,
-                rngBase = new Rng(rngSeed == 0 ? 1u : rngSeed),
                 positions = positions,
                 rotations = rotations,
                 scales = scales
@@ -265,10 +198,7 @@ public class CosmeticJobsController : MonoBehaviour
             // SERIAL PATH: Single-threaded for-loop on main thread (for comparison)
             CalculateSpawnDataSerial(
                 positions, rotations, scales,
-                uniformSpawn, gridSize, center,
-                spawnMin, spawnMax, baseScale,
-                new float2(randomScale.x, randomScale.y), spacing,
-                new Rng(rngSeed == 0 ? 1u : rngSeed)
+                gridSize, center, baseScale, spacing
             );
 
             calculationTimer.Stop();

@@ -94,7 +94,6 @@ public class BenchManager : MonoBehaviour
     public bool useParallelCosmetic = true;
     public CosmeticJobsController jobsController;    // drag the CosmeticJobs here
     public float cosmeticBaseScale = 1f;             // pass-through to jobs
-    public Vector2 cosmeticRandomScale = new(0.8f, 1.2f);
 
     [Header("Parents (optional)")]
     public Transform rigidParent;
@@ -167,7 +166,6 @@ public class BenchManager : MonoBehaviour
                     jobsController.spawnMin = spawnMin;
                     jobsController.spawnMax = spawnMax;
                     jobsController.baseScale = cosmeticBaseScale;
-                    jobsController.randomScale = cosmeticRandomScale;
 
                     // Set execution mode: Parallel (multi-core) or Serial (single-core)
                     jobsController.useParallelProcessing = useParallelCosmetic;
