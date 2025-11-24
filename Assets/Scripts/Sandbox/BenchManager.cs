@@ -2,10 +2,8 @@
 using UnityEngine;
 using UnityEngine.Rendering;
 
-/// Three modes for your sandbox bench.
 public enum BenchMode { RigidOnly, Fractured, Cosmetic }
 
-/// Draws thousands of collider-less debris instances.
 public class DebrisRenderer : MonoBehaviour
 {
     public Mesh mesh;
@@ -34,7 +32,6 @@ public class DebrisRenderer : MonoBehaviour
     public void Clear() => matrices.Clear();
 }
 
-/// Micro pool for fast spawn/clear of rigid objects.
 public class SimplePool
 {
     readonly GameObject prefab;
@@ -70,7 +67,6 @@ public class SimplePool
     }
 }
 
-/// The bench orchestrator: spawns/clears the chosen mode.
 public class BenchManager : MonoBehaviour
 {
     [Header("Mode & counts")]
@@ -84,21 +80,21 @@ public class BenchManager : MonoBehaviour
     public Vector3 spawnMax = new(3f, 2.0f, 3f);
 
     [Header("Prefabs & assets")]
-    public GameObject pooledRigidPrefab;   // e.g., PooledRigid.prefab
-    public GameObject fracturedPrefab;     // e.g., FracturedSet.prefab
-    public Mesh cosmeticMesh;              // e.g., DebrisMesh.fbx mesh (or a primitive mesh)
-    public Material cosmeticMaterial;      // DebrisMat (Enable GPU Instancing ?)
+    public GameObject pooledRigidPrefab; 
+    public GameObject fracturedPrefab;    
+    public Mesh cosmeticMesh;         
+    public Material cosmeticMaterial;  
 
     [Header("Cosmetic mode selection")]
     [Tooltip("Toggle between Parallel (multi-core) and Serial (single-core) execution for class demonstration")]
     public bool useParallelCosmetic = true;
-    public CosmeticJobsController jobsController;    // drag the CosmeticJobs here
-    public float cosmeticBaseScale = 1f;             // pass-through to jobs
+    public CosmeticJobsController jobsController;
+    public float cosmeticBaseScale = 1f;      
 
     [Header("Parents (optional)")]
     public Transform rigidParent;
     public Transform fracturedParent;
-    public Transform cosmeticParent;       // holder for DebrisRenderer
+    public Transform cosmeticParent;
 
     SimplePool rigidPool;
     readonly List<GameObject> rigidsActive = new();
@@ -107,7 +103,6 @@ public class BenchManager : MonoBehaviour
 
     void Awake()
     {
-        // Create holders so the Hierarchy stays tidy
         if (!rigidParent) rigidParent = new GameObject("Rigid_Parent").transform;
         if (!fracturedParent) fracturedParent = new GameObject("Fractured_Parent").transform;
         if (!cosmeticParent) cosmeticParent = new GameObject("Cosmetic_Parent").transform;
@@ -120,7 +115,6 @@ public class BenchManager : MonoBehaviour
             rigidPool = new SimplePool(pooledRigidPrefab, rigidParent,
                                        prewarm: Mathf.Min(256, Mathf.Max(32, rigidCount)));
 
-        // create the instanced drawer
         var drawer = new GameObject("DebrisRenderer");
         drawer.transform.SetParent(cosmeticParent, false);
         debrisRenderer = drawer.AddComponent<DebrisRenderer>();
@@ -128,18 +122,15 @@ public class BenchManager : MonoBehaviour
         debrisRenderer.material = cosmeticMaterial;
         debrisRenderer.gameObject.SetActive(!useParallelCosmetic);
 
-        // if a jobs controller is assigned, start it disabled (we’ll enable only in Cosmetic)
         if (jobsController != null) jobsController.enabled = false;
     }
 
     void Start() => RunMode(mode);
 
-    // Call this to switch modes (e.g., from a button or a key)
     public void RunMode(BenchMode newMode)
     {
         mode = newMode;
 
-        // Turn off both cosmetic paths first (avoid double rendering)
         if (debrisRenderer) debrisRenderer.gameObject.SetActive(false);
         if (jobsController) jobsController.enabled = false;
 
@@ -158,19 +149,15 @@ public class BenchManager : MonoBehaviour
                 break;
 
             case BenchMode.Cosmetic:
-                // Always use jobsController for cosmetic mode (creates grabbable GameObjects)
                 if (jobsController != null)
                 {
-                    // Configure the jobs controller
                     jobsController.count = Mathf.Max(0, cosmeticCount);
                     jobsController.spawnMin = spawnMin;
                     jobsController.spawnMax = spawnMax;
                     jobsController.baseScale = cosmeticBaseScale;
 
-                    // Set execution mode: Parallel (multi-core) or Serial (single-core)
                     jobsController.useParallelProcessing = useParallelCosmetic;
 
-                    // Make sure it uses the same mesh/material you assigned to BenchManager
                     if (cosmeticMesh) jobsController.mesh = cosmeticMesh;
                     if (cosmeticMaterial) jobsController.material = cosmeticMaterial;
 
@@ -239,7 +226,7 @@ public class BenchManager : MonoBehaviour
             foreach (var rb in p.GetComponentsInChildren<Rigidbody>())
             {
                 rb.sleepThreshold = 0.005f;
-                // Optionally anchor a few shards:
+                // Optional
                 // if (Random.value < 0.1f) rb.isKinematic = true;
             }
             fracturedActive.Add(p);
@@ -272,7 +259,6 @@ public class BenchManager : MonoBehaviour
         ));
     }
 
-    // Draw the spawn volume in the editor so you can see where things appear
     void OnDrawGizmosSelected()
     {
         Gizmos.color = new Color(0.2f, 0.8f, 1f, 0.25f);

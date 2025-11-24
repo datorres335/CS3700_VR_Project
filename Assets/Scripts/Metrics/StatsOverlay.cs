@@ -19,14 +19,11 @@ public class StatsOverlay : MonoBehaviour
 
     void Update()
     {
-        // accumulate for a simple moving average of frame time
         accumDelta += Time.unscaledDeltaTime;
         frames++;
 
-        // rigidbodies active in scene (cheap and fine for Phase 1)
         int rbCount = FindObjectsByType<Rigidbody>(FindObjectsSortMode.None).Length;
 
-        // averages
         float avgFrame = (frames > 0) ? (accumDelta / frames) : Time.unscaledDeltaTime;
         float fps = 1f / Mathf.Max(0.00001f, avgFrame);
         float ms = avgFrame * 1000f;
@@ -34,7 +31,6 @@ public class StatsOverlay : MonoBehaviour
         float avgFixed = (fixedSteps > 0) ? (accumFixed / fixedSteps) : Time.fixedUnscaledDeltaTime;
         float fixedMs = avgFixed * 1000f;
 
-        // build text
         sb.Clear();
         sb.AppendLine("<b>Performance Stats</b>");
         sb.AppendFormat("FPS: {0:0.0}  ({1:0.00} ms)\n", fps, ms);
@@ -42,25 +38,21 @@ public class StatsOverlay : MonoBehaviour
         sb.AppendFormat("Rigidbodies: {0}\n", rbCount);
         sb.AppendFormat("Draw Calls (approx): {0}\n", UnityStats.drawCalls);
 
-        // append parallel processing comparison stats (if available)
         if (CosmeticJobsController.LastJobCount > 0)
         {
             sb.AppendLine();
             sb.AppendLine("<b>Parallel Processing Comparison</b>");
 
-            // Current execution mode
             string mode = CosmeticJobsController.IsUsingParallel
                 ? $"Parallel ({CosmeticJobsController.WorkerCount} cores)"
                 : "Serial (1 core)";
             sb.AppendFormat("Mode: {0}\n", mode);
 
-            // Timing breakdown
             sb.AppendFormat("Calculation Time: {0:0.000} ms\n", CosmeticJobsController.LastCalculationMs);
             //sb.AppendFormat("GameObject Creation: {0:0.000} ms\n", CosmeticJobsController.LastGameObjectMs);
             //sb.AppendFormat("Total Spawn: {0:0.000} ms\n", CosmeticJobsController.LastTotalMs);
             sb.AppendFormat("Object Count: {0}\n", CosmeticJobsController.LastJobCount);
 
-            // Show speedup factor if we have both serial and parallel measurements
             //if (CosmeticJobsController.SpeedupFactor > 0f)
             //{
             //    sb.AppendFormat("Speedup: {0:0.0}x faster\n", CosmeticJobsController.SpeedupFactor);
@@ -69,7 +61,6 @@ public class StatsOverlay : MonoBehaviour
 
         statsText.text = sb.ToString();
 
-        // reset the window every N samples
         if (frames >= sampleCount)
         {
             accumDelta = 0f; frames = 0;

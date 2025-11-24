@@ -6,7 +6,7 @@ public class OverlayToggle : MonoBehaviour
     [Tooltip("Root object that has the Canvas/CanvasGroup (e.g., your HUD panel)")]
     public GameObject overlayRoot;
 
-    // Optional: drag these if you want; otherwise we auto-find them under overlayRoot.
+    // Optional
     public Canvas overlayCanvas;
     public CanvasGroup canvasGroup;
 
@@ -39,7 +39,6 @@ public class OverlayToggle : MonoBehaviour
 
     void OnPressed(InputAction.CallbackContext _)
     {
-        // Prefer CanvasGroup if available (also handles UI interactivity)
         if (canvasGroup)
         {
             bool visible = canvasGroup.alpha > 0.5f;
@@ -49,14 +48,12 @@ public class OverlayToggle : MonoBehaviour
             return;
         }
 
-        // Fallback: just toggle the Canvas component
         if (overlayCanvas)
         {
             overlayCanvas.enabled = !overlayCanvas.enabled;
             return;
         }
 
-        // Last resort: toggle the whole object (only safe if this script lives elsewhere!)
         if (overlayRoot)
             overlayRoot.SetActive(!overlayRoot.activeSelf);
     }
