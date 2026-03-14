@@ -1,1 +1,1 @@
-[![Preview Slides](./Preview_Slides/Parallel%20Physics%20Simulation%20in%20XR_%20From%20Unity%20to%20NVIDIA%20Omniverse%20.png)]
+[![Preview Slides](./Preview_Slides/Parallel%20Physics%20Simulation%20in%20XR_%20From%20Unity%20to%20NVIDIA%20Omniverse.png)]
